@@ -1,19 +1,18 @@
 ﻿#include "Util.h"
 
-void build_feature(cv::Mat & image, std::vector<sample_type>& samples)
+bool build_feature(cv::Mat & faceImage, std::vector<sample_type>& samples)
 {
-	cv::Mat faceImage = (faceDetection.Detect(image))[0];
-	cv::imshow("aa", faceImage);
-	cv::waitKey(0);
+
 	cv::Mat resizeImage = edgeDetection.Resize(faceImage, cv::Size(60, 60));
 	//imshow("a", resizeImage);
 	cv::Mat edgeImage = edgeDetection.Detect(resizeImage);
 
-	//cv::imshow("edge Image", edgeImage);
-	//cv::waitKey(0);
+	/*cv::imshow("edge Image", edgeImage);
+	/cv::waitKey(0);*/
 	int nrows = edgeImage.rows;
 	int ncols = edgeImage.cols;
-
+	//cout << "nrows : " << nrows << endl;
+	//cout << "ncols : " << ncols << endl;
 	std::vector<cv::Point> white_point;
 
 	for (int y = 0; y < nrows; ++y) {
@@ -24,23 +23,33 @@ void build_feature(cv::Mat & image, std::vector<sample_type>& samples)
 		}
 	}
 
-	std::cout << "diem trang " << white_point.size() << endl;
+	//std::cout << "diem trang " << white_point.size() << endl;
 	// tính euledean distance từ một điểm tới điểm trắng gàn nhất
+	bool flag = true;
 	sample_type m;
 	int index = 0;
 	for (int y = 0; y < nrows; ++y) {
 		uchar *prow = edgeImage.ptr<uchar>(y);
 		for (int x = 0; x < ncols; ++x) {
-			double min_dist = DBL_MAX;
+			double min_dist = 10000.0;
 			for (int i = 0; i < white_point.size(); ++i) {
-				min_dist = std::min(min_dist, euclidean_dist(white_point[i], cv::Point(x, y)));
+				if (x != white_point[i].x && y != white_point[i].y)
+					min_dist = std::min(min_dist, euclidean_dist(white_point[i], cv::Point(x, y)));
 			}
+
+			if (min_dist >= 10000.0 - 10) {
+				flag = false;
+				break;
+			}
+
 			m(index++) = min_dist;
 		}
 	}
 
-	cout << "index : " << index << endl;
-	samples.push_back(m);
+	//cout << "index : " << index << endl;
+	if (flag)
+		samples.push_back(m);
+	return flag;
 }
 
 void get_training_data(char *path, std::vector<sample_type>& samples, std::vector<double>& labels)
@@ -63,17 +72,17 @@ void get_training_data(char *path, std::vector<sample_type>& samples, std::vecto
 		return;
 	}
 
-	cout << "all file : " << endl;
+	/*cout << "all file : " << endl;
 	for (int i = 0; i < ListOfFileName.size(); ++i) {
 		cout << ListOfFileName[i] << "\\";
 	}
 
-	cout << endl;
+	cout << endl;*/
 	string path_str(path);
-	cout << path << endl;
+	//cout << path << endl;
 	for (int i = 0; i < ListOfFileName.size(); ++i) {
 
-		cout << path_str + ListOfFileName[i] << endl;;
+		//cout << path_str + ListOfFileName[i] << endl;;
 		cv::Mat image = cv::imread(path_str + ListOfFileName[i]);
 
 
@@ -86,11 +95,26 @@ void get_training_data(char *path, std::vector<sample_type>& samples, std::vecto
 		//cv::imshow("a", image);
 		// gọi hàm build feature
 
-		build_feature(image, samples);
+		// lấy mặt
+		cv::Mat rimage;
+		cv::resize(image, rimage, cv::Size(256, 256));
+		std::vector<cv::Rect> rects;
+		std::vector<cv::Mat> faces = faceDetection.Detect(rimage, rects);
+		//std::cout << ListOfFileName[i] << endl;
+		bool flag = true;
+		if (faces.empty()) {
+			flag = build_feature(image, samples);
+		}
+		else {
+			flag = build_feature(faces[0], samples);
+		}
 		// get label của image 
 
-		string s = ListOfFileName[i].substr(3, 2);
-		std::cout << s << endl;
+		if (!flag)
+			continue;
+
+		string s = ListOfFileName[i].substr(POS_OF_LABEL, LENGTH_OF_LABEL);
+		
 		if (s == Expression.AN)
 			labels.push_back(Labels.AN);
 		else if (s == Expression.DI)
@@ -106,6 +130,7 @@ void get_training_data(char *path, std::vector<sample_type>& samples, std::vecto
 		else if (s == Expression.SU)
 			labels.push_back(Labels.SU);
 		else {
+			cv::waitKey(0);
 			cerr << "Khong co nhan!";
 			return;
 		}

@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <limits>
 #include <dlib/svm_threaded.h>
-
+#include <dlib/svm.h>
 
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -25,6 +25,8 @@ using namespace std;
 using namespace dlib;
 
 #define DIM 3600
+#define POS_OF_LABEL 3
+#define LENGTH_OF_LABEL 2
 
 struct Labels_struct
 {
@@ -36,6 +38,16 @@ struct Labels_struct
 		AN = 6,
 		NE = 7;
 }; static Labels_struct Labels;
+
+//struct Expression_struct {
+//	string HA = "3",	// happy
+//		SU = "5",		//surprise
+//		FE = "2",		//fear
+//		DI = "1",		//disgust
+//		SA = "4",		//sad
+//		AN = "0",		//anger
+//		NE = "6";		//neutral state
+//}; static Expression_struct Expression;
 
 struct Expression_struct {
 	string HA = "HA",	// happy
@@ -52,7 +64,7 @@ struct Expression_struct {
 typedef dlib::matrix<double, DIM, 1> sample_type;
 
 // build featue
-void build_feature(cv::Mat &image, std::vector<sample_type>& samples);
+bool build_feature(cv::Mat &image, std::vector<sample_type>& samples);
 
 void get_training_data(char *path, std::vector<sample_type>& samples, std::vector<double>& labels);
 

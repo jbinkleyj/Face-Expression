@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing/render_face_detections.h>
@@ -25,7 +25,7 @@ public:
 	~FaceDetection() {
 
 	}
-	std::vector<cv::Mat> Detect(const  cv::Mat &srcImg) {
+	std::vector<cv::Mat> Detect(const  cv::Mat &srcImg, std::vector<cv::Rect>& rects) {
 		// We need a face detector.  We will use this to get bounding boxes for
 		// each face in an image.
 		
@@ -65,6 +65,10 @@ public:
 			////////////// Tuan Kyou
 			std::vector<cv::Point2i> PointList;
 			for (int h = 0; h < shape.num_parts(); h++) {
+				if (shape.part(h).x() < 0 || shape.part(h).y() < 0 ||
+					shape.part(h).y() >= srcImg.cols || shape.part(h).x() >= srcImg.rows)
+					continue;
+
 				cv::Point2i p(shape.part(h).x(), shape.part(h).y());
 				PointList.push_back(p);
 			}
@@ -77,10 +81,12 @@ public:
 		std::vector<cv::Rect> arrRect;
 		for (int i = 0; i < arrPointList.size(); i++) {
 			cv::Rect r = cv::boundingRect(arrPointList[i]);
+			rects.push_back(r);
 			cv::Mat crop = srcImg(r);
 			arrMat.push_back(crop);
-
 		}
+
+		// tìm tọa đồ top left, bottom right
 		////////////////////
 		return arrMat;
 	}
